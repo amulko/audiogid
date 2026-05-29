@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>ВелоПРОбег · АудиоГид</title>
+  <meta name="description" content="Аудиогид для велосипедистов по историческому маршруту вдоль Балтийского побережья">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2876C8">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="ВелоГид">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
+  <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="lib/leaflet.css">
+
+  <script>
+  /* ── Проверка доступа (выполняется до загрузки приложения) ── */
+  (function () {
+    const SECRET = 'vbp8kzm2025xQ';
+
+    function checkCached() {
+      try {
+        const c = JSON.parse(localStorage.getItem('_vba') || 'null');
+        return c && Date.now() < c.exp;
+      } catch (_) { return false; }
+    }
+
+    async function getToken(dateStr) {
+      const enc = new TextEncoder();
+      const key = await crypto.subtle.importKey(
+        'raw', enc.encode(SECRET),
+        { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+      );
+      const buf = await crypto.subtle.sign('HMAC', key, enc.encode(dateStr));
+      return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 10);
+    }
+
+    async function check() {
+      if (checkCached()) return true;
+      const k = new URLSearchParams(location.search).get('k');
+      if (!k) return false;
+      const msk = new Date(Date.now() + 3 * 3600e3);
+      const day = msk.toISOString().slice(0, 10);
+      const expected = await getToken(day);
+      if (k !== expected) return false;
+      // Кэшируем до московской полуночи
+      const exp = new Date(day + 'T21:00:00Z').getTime();
+      localStorage.setItem('_vba', JSON.stringify({ exp }));
+      if (history.replaceState) history.replaceState({}, '', location.pathname);
+      return true;
+    }
+
+    // Если кэш есть — сразу скрываем шлагбаум без мигания
+    if (checkCached()) {
+      document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('accessGate')?.classList.add('hidden');
+      });
+    }
+
+    // Полная асинхронная проверка (для новых пользователей с токеном в URL)
+    check().then(ok => {
+      if (ok) {
+        const el = document.getElementById('accessGate');
+        if (el) el.classList.add('hidden');
+      }
+    });
+
+    // Глобальная функция ручного ввода токена (для PWA без URL-параметра)
+    window._gateUnlock = async function(k) {
+      if (!k) return false;
+      const msk = new Date(Date.now() + 3 * 3600e3);
+      const day = msk.toISOString().slice(0, 10);
+      const expected = await getToken(day);
+      if (k.trim() !== expected) return false;
+      const exp = new Date(day + 'T21:00:00Z').getTime();
+      localStorage.setItem('_vba', JSON.stringify({ exp }));
+      return true;
+    };
+  })();
+  </script>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --blue:       #2876C8;
+      --blue-dark:  #1A5CA8;
+      --green:      #5CB63A;
+      --green-dark: #469A2A;
+      --bg:         #f0f5fb;
+    }
+
+    body {
+      font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: #1a2233;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: var(--blue);
+      color: #fff;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 12px rgba(40,118,200,.35);
+      z-index: 800;
+      flex-shrink: 0;
+    }
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .header-logo {
+      height: 34px;
+      width: 34px;
+      object-fit: contain;
+      border-radius: 8px;
+      background: #fff;
+      padding: 2px;
+    }
+    .header-text {}
+    .header-title {
+      font-size: 15px;
+      font-weight: 800;
+      line-height: 1.1;
+    }
+    .header-title span { color: #a8d87a; }
+    .header-sub { font-size: 10px; opacity: .8; margin-top: 1px; font-weight: 600; }
+
+    .gps-badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(255,255,255,.18);
+      border-radius: 20px;
+      padding: 5px 11px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .gps-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #ffcdd2;
+    }
+    .gps-dot.searching { background: #fff176; animation: blink 1s infinite; }
+    .gps-dot.active    { background: #b9f6ca; animation: blink 2s infinite; }
+
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* ── Map ── */
+    #map { flex: 1; z-index: 1; }
+
+    /* ── Bottom panel ── */
+    .bottom-panel {
+      background: #fff;
+      border-radius: 22px 22px 0 0;
+      box-shadow: 0 -4px 20px rgba(40,118,200,.12);
+      z-index: 800;
+      flex-shrink: 0;
+    }
+    .handle {
+      width: 40px; height: 4px;
+      background: #d8e4f0; border-radius: 2px;
+      margin: 10px auto 0;
+    }
+    .panel-body { padding: 10px 16px 20px; }
+
+    /* Progress */
+    .progress-row {
+      display: flex; justify-content: space-between;
+      font-size: 11px; color: #8a9ab5; margin-bottom: 5px;
+      font-weight: 600;
+    }
+    .progress-bar {
+      height: 5px; background: #e2ecf8; border-radius: 3px;
+      overflow: hidden; margin-bottom: 12px;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--green), #7dd458);
+      border-radius: 3px;
+      transition: width .5s ease;
+    }
+
+    /* Waypoint card */
+    .wp-card { display: flex; align-items: flex-start; gap: 11px; }
+    .wp-icon {
+      width: 46px; height: 46px; flex-shrink: 0;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--blue), #4a9de0);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 3px 10px rgba(40,118,200,.25);
+    }
+    .wp-info { flex: 1; min-width: 0; }
+    .wp-name { font-size: 14px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .wp-desc { font-size: 11px; color: #8a9ab5; margin-top: 2px; font-weight: 600; }
+    .wp-dist { font-size: 11px; color: var(--blue); font-weight: 700; margin-top: 3px; }
+
+    /* Controls */
+    .controls {
+      display: flex; gap: 8px;
+      margin-top: 11px; padding-top: 11px;
+      border-top: 1px solid #eaf1fb;
+    }
+    .btn {
+      border: none; border-radius: 14px;
+      font-family: 'Nunito', sans-serif;
+      font-size: 13px; font-weight: 700;
+      cursor: pointer; display: flex;
+      align-items: center; justify-content: center;
+      gap: 5px; padding: 11px 0;
+      transition: transform .1s, opacity .15s;
+    }
+    .btn:active { transform: scale(.95); opacity: .85; }
+    .btn-play  {
+      flex: 1;
+      background: linear-gradient(135deg, var(--green), #7dd458);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(92,182,58,.35);
+    }
+    .btn-stop  { flex: 0 0 46px; height: 46px; background: #f0f5fb; color: #6a7f99; font-size: 15px; }
+    .btn-list  { flex: 0 0 46px; height: 46px; background: #e8f1fc; color: var(--blue); font-size: 17px; }
+
+    @keyframes sb { 0%,100%{transform:scaleY(.4)} 50%{transform:scaleY(1)} }
+
+    /* ── Start overlay ── */
+    .start-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: #fff;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 28px 24px; text-align: center;
+      overflow-y: auto;
+    }
+    .start-overlay.hidden { display: none; }
+
+    .start-logo {
+      width: 150px; height: 150px;
+      object-fit: contain;
+      margin-bottom: 6px;
+    }
+    .start-brand {
+      font-size: 22px; font-weight: 900;
+      margin-bottom: 2px;
+      color: var(--blue);
+    }
+    .start-brand span { color: var(--green); }
+    .start-title {
+      font-size: 13px; font-weight: 700;
+      color: #8a9ab5;
+      margin-bottom: 20px;
+      letter-spacing: .3px;
+    }
+
+    .start-facts {
+      background: #f0f5fb;
+      border-radius: 16px; padding: 4px 16px;
+      margin-bottom: 24px; width: 100%; max-width: 300px;
+    }
+    .fact {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 0; font-size: 13px; font-weight: 700;
+      color: #3a4a66;
+      border-bottom: 1px solid #e2ecf8;
+    }
+    .fact:last-child { border-bottom: none; }
+    .fact-icon {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: var(--blue);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; flex-shrink: 0;
+    }
+    .fact-icon.green { background: var(--green); }
+
+    .btn-start {
+      background: linear-gradient(135deg, var(--green), #7dd458);
+      color: #fff;
+      border: none; border-radius: 50px;
+      padding: 15px 48px; font-size: 16px; font-weight: 800;
+      font-family: 'Nunito', sans-serif;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(92,182,58,.4);
+      transition: transform .1s;
+      letter-spacing: .3px;
+    }
+    .btn-start:active { transform: scale(.97); }
+
+    .btn-offline {
+      width: 100%; padding: 12px;
+      background: #f0f5fb;
+      border: 2px solid #d8e8f8;
+      border-radius: 50px; color: var(--blue);
+      font-size: 13px; font-weight: 700;
+      font-family: 'Nunito', sans-serif;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .btn-offline:active { background: #e2ecf8; }
+    .btn-offline:disabled { opacity: .5; cursor: default; }
+
+    .start-footer {
+      margin-top: 18px; font-size: 11px; color: #b0bdd0;
+      font-weight: 600; line-height: 1.6;
+    }
+
+    /* ── Modal ── */
+    .modal {
+      position: fixed; inset: 0; z-index: 8000;
+      background: #fff;
+      display: flex; flex-direction: column;
+      transform: translateY(100%);
+      transition: transform .3s cubic-bezier(.4,0,.2,1);
+    }
+    .modal.open { transform: translateY(0); }
+
+    .modal-head {
+      padding: 14px 16px;
+      border-bottom: 1px solid #eaf1fb;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-head-title { font-size: 17px; font-weight: 800; color: var(--blue); }
+    .btn-close {
+      width: 30px; height: 30px; border: none;
+      background: #f0f5fb; border-radius: 50%;
+      font-size: 14px; cursor: pointer; display: flex;
+      align-items: center; justify-content: center;
+      color: #6a7f99; font-weight: 700;
+    }
+
+    .modal-scroll { overflow-y: auto; flex: 1; padding: 8px; }
+
+    .modal-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 10px; border-radius: 14px; cursor: pointer;
+      position: relative; transition: background .15s;
+    }
+    .modal-item:active { background: #f0f5fb; }
+    .modal-item.visited::after {
+      content: '✓'; position: absolute; right: 12px;
+      color: var(--green); font-weight: 800; font-size: 15px;
+    }
+    .item-icon {
+      width: 42px; height: 42px; flex-shrink: 0;
+      border-radius: 12px; font-size: 20px;
+      background: linear-gradient(135deg, var(--blue), #4a9de0);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal-item.visited .item-icon {
+      background: linear-gradient(135deg, var(--green), #7dd458);
+    }
+    .item-name { font-size: 13px; font-weight: 800; }
+    .item-desc { font-size: 11px; color: #8a9ab5; margin-top: 2px; font-weight: 600; }
+
+    /* ── Access gate ── */
+    .access-gate {
+      position: fixed; inset: 0; z-index: 99999;
+      background: #fff;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 28px 24px; text-align: center;
+    }
+    .access-gate.hidden { display: none; }
+    .access-gate .start-logo { margin-bottom: 6px; }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; top: 68px; left: 50%;
+      transform: translateX(-50%) translateY(-10px);
+      background: var(--blue); color: #fff;
+      padding: 8px 18px; border-radius: 50px;
+      font-size: 13px; font-weight: 700;
+      z-index: 9500; opacity: 0; pointer-events: none;
+      white-space: nowrap;
+      box-shadow: 0 4px 16px rgba(40,118,200,.4);
+      transition: all .28s;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<!-- ─── Экран доступа (показывается по умолчанию, скрывается при валидном токене) ── -->
+<div id="accessGate" class="access-gate">
+  <img src="logo.webp" class="start-logo" alt="ВелоПРОбег">
+  <div class="start-brand">Вело<span>ПРО</span>бег</div>
+  <div class="start-title">АудиоГид · Зеленоградск → Светлогорск</div>
+  <div class="start-facts">
+    <div class="fact">
+      <div class="fact-icon">📱</div>
+      <span>Отсканируйте QR-код</span>
+    </div>
+    <div class="fact">
+      <div class="fact-icon green">🚲</div>
+      <span>QR-код выдаётся при аренде</span>
+    </div>
+    <div class="fact">
+      <div class="fact-icon">🔑</div>
+      <span>Доступ действует 1 сутки</span>
+    </div>
+  </div>
+  <div style="width:100%;max-width:320px;margin-top:20px">
+    <button onclick="startScanner()"
+      style="width:100%;padding:15px;background:linear-gradient(135deg,#2876C8,#4a9de0);
+             color:#fff;border:none;border-radius:16px;font-size:16px;font-weight:800;
+             cursor:pointer;font-family:inherit;display:flex;align-items:center;
+             justify-content:center;gap:10px;box-shadow:0 4px 16px rgba(40,118,200,.35)">
+      <span style="font-size:22px">📷</span> Сканировать QR-код
+    </button>
+    <div id="gateErr" style="color:#e53935;font-size:12px;font-weight:700;margin-top:8px;text-align:center"></div>
+  </div>
+  <div class="start-footer">
+    Велопрокат «ВелоПРОбег»<br>
+    г. Зеленоградск, ул. Гагарина 87<br>
+    г. Зеленоградск, ул. Железнодорожная 2б
+  </div>
+</div>
+
+<!-- ─── Сканер QR ─────────────────────────────────────────────────────────── -->
+<div id="scannerOverlay" style="display:none;position:fixed;inset:0;z-index:100000;
+     background:#000;flex-direction:column;align-items:center;justify-content:center;gap:16px">
+  <div style="color:#fff;font-size:16px;font-weight:700">Наведите камеру на QR-код</div>
+  <div style="position:relative;width:280px;height:280px;border-radius:16px;overflow:hidden">
+    <video id="scannerVideo" autoplay playsinline muted
+           style="width:100%;height:100%;object-fit:cover"></video>
+    <canvas id="scannerCanvas" style="display:none"></canvas>
+    <!-- Рамка прицела -->
+    <div style="position:absolute;inset:0;border:3px solid #2876C8;border-radius:16px;pointer-events:none"></div>
+  </div>
+  <div id="scannerStatus" style="color:#aaa;font-size:13px;font-weight:600">Ищу QR-код...</div>
+  <button onclick="stopScanner()"
+    style="padding:12px 32px;background:#333;color:#fff;border:none;border-radius:50px;
+           font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">
+    ✕ Закрыть
+  </button>
+</div>
+
+<script src="./lib/jsqr.js"></script>
+<script>
+let _scanStream = null, _scanRaf = null;
+
+async function startScanner() {
+  document.getElementById('gateErr').textContent = '';
+  const overlay = document.getElementById('scannerOverlay');
+  overlay.style.display = 'flex';
+  try {
+    _scanStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 640 } }
+    });
+    const video = document.getElementById('scannerVideo');
+    video.srcObject = _scanStream;
+    await video.play();
+    _scanRaf = requestAnimationFrame(scanFrame);
+  } catch(e) {
+    document.getElementById('scannerStatus').textContent = 'Нет доступа к камере — ' + e.message;
+  }
+}
+
+function scanFrame() {
+  const video = document.getElementById('scannerVideo');
+  const canvas = document.getElementById('scannerCanvas');
+  if (video.readyState >= 2 && video.videoWidth > 0) {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+    try {
+      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+      if (code && code.data) {
+        document.getElementById('scannerStatus').textContent = 'QR найден, проверяю...';
+        stopScanner();
+        handleScannedQR(code.data);
+        return;
+      }
+    } catch(_) {}
+  }
+  _scanRaf = requestAnimationFrame(scanFrame);
+}
+
+function stopScanner() {
+  if (_scanStream) { _scanStream.getTracks().forEach(t => t.stop()); _scanStream = null; }
+  if (_scanRaf) { cancelAnimationFrame(_scanRaf); _scanRaf = null; }
+  document.getElementById('scannerOverlay').style.display = 'none';
+}
+
+async function handleScannedQR(data) {
+  try {
+    let k = null;
+    try { k = new URL(data).searchParams.get('k'); } catch(_) {}
+    if (!k) k = data.trim();
+    if (!k) throw new Error('QR не содержит код доступа');
+    const ok = await window._gateUnlock(k);
+    if (ok) {
+      document.getElementById('accessGate').classList.add('hidden');
+    } else {
+      document.getElementById('gateErr').textContent = 'QR-код недействителен или устарел';
+    }
+  } catch(e) {
+    document.getElementById('gateErr').textContent = 'Ошибка: ' + e.message;
+  }
+}
+</script>
+
+<!-- ─── Стартовый экран ─────────────────────────────────────────────────── -->
+<div class="start-overlay" id="startOverlay">
+  <img src="logo.webp" class="start-logo" alt="ВелоПРОбег">
+  <div class="start-brand">Вело<span>ПРО</span>бег</div>
+  <div class="start-title">АудиоГид · Зеленоградск → Светлогорск</div>
+
+  <div class="start-facts">
+    <div class="fact">
+      <div class="fact-icon">📍</div>
+      <span>17 точек маршрута</span>
+    </div>
+    <div class="fact">
+      <div class="fact-icon green">🛣️</div>
+      <span>~22 км вдоль Балтики</span>
+    </div>
+    <div class="fact">
+      <div class="fact-icon">🔊</div>
+      <span>Авто-озвучка при приближении</span>
+    </div>
+    <div class="fact">
+      <div class="fact-icon green">📵</div>
+      <span>Работает без интернета</span>
+    </div>
+  </div>
+
+  <button class="btn-start" onclick="startTour()">Начать маршрут</button>
+
+  <button id="btnInstall" style="display:none;margin-top:12px;width:100%;max-width:300px;padding:13px;background:#fff;border:2px solid #2876C8;border-radius:50px;color:#2876C8;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;" onclick="installApp()">
+    📲 Установить приложение
+  </button>
+  <div id="iosInstallHint" style="display:none;margin-top:12px;padding:12px 16px;background:#f0f5fb;border-radius:14px;font-size:12px;color:#5a7a9a;font-weight:600;line-height:1.6;max-width:300px;text-align:left">
+    Чтобы установить: нажмите <strong>«Поделиться»</strong> (□↑) внизу экрана → <strong>«На экран домой»</strong>
+  </div>
+
+  <div id="offlineSection" style="margin-top:14px;width:100%;max-width:300px">
+    <button class="btn-offline" id="btnOffline" onclick="downloadOffline()">
+      📥 Скачать карту для офлайн
+    </button>
+    <div id="offlineProgress" style="display:none;margin-top:10px">
+      <div style="height:5px;background:#e2ecf8;border-radius:3px;overflow:hidden">
+        <div id="offlineBar" style="height:100%;background:var(--green);border-radius:3px;width:0%;transition:width .3s"></div>
+      </div>
+      <div id="offlineStatus" style="font-size:11px;color:#8a9ab5;font-weight:600;margin-top:6px;text-align:center">Загрузка тайлов…</div>
+    </div>
+  </div>
+
+  <div class="start-footer">
+    Велопрокат «ВелоПРОбег»<br>
+    г. Зеленоградск, ул. Гагарина 87<br>
+    г. Зеленоградск, ул. Железнодорожная 2б
+  </div>
+</div>
+
+<!-- ─── Шапка ─────────────────────────────────────────────────────────────── -->
+<div class="header">
+  <div class="header-brand">
+    <img src="logo.webp" class="header-logo" alt="лого">
+    <div class="header-text">
+      <div class="header-title">Вело<span>ПРО</span>бег</div>
+      <div class="header-sub">Зеленоградск → Светлогорск</div>
+    </div>
+  </div>
+  <div class="gps-badge">
+    <div class="gps-dot" id="gpsDot"></div>
+    <span id="gpsText">GPS</span>
+  </div>
+</div>
+
+<!-- ─── Карта ──────────────────────────────────────────────────────────────── -->
+<div id="map"></div>
+
+<!-- ─── Нижняя панель ─────────────────────────────────────────────────────── -->
+<div class="bottom-panel">
+  <div class="handle"></div>
+  <div class="panel-body">
+
+    <div class="progress-row">
+      <span id="progressText">0 из 17 точек</span>
+      <span>~22 км</span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill" style="width:0%"></div>
+    </div>
+
+    <div class="wp-card">
+      <div class="wp-icon" id="currentIcon">🗺️</div>
+      <div class="wp-info">
+        <div class="wp-name" id="currentName">Запуск…</div>
+        <div class="wp-desc" id="currentDesc">Разрешите доступ к GPS</div>
+        <div class="wp-dist" id="currentDistance"></div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-play" id="btnPlay" onclick="toggleAudio()">
+        <span id="playIcon">▶</span>
+        <span id="playText">Слушать</span>
+      </button>
+      <button class="btn btn-stop" onclick="stopAudio()" title="Остановить">■</button>
+      <button class="btn btn-list" onclick="toggleList()" title="Все точки">☰</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ─── Список точек ──────────────────────────────────────────────────────── -->
+<div class="modal" id="listModal">
+  <div class="modal-head">
+    <div class="modal-head-title">📍 Точки маршрута</div>
+    <button class="btn-close" onclick="toggleList()">✕</button>
+  </div>
+  <div class="modal-scroll" id="modalList"></div>
+</div>
+
+<!-- ─── Toast ─────────────────────────────────────────────────────────────── -->
+<div class="toast" id="toast"></div>
+
+<script>
+  // ── Кнопка установки PWA ──────────────────────────────────────────────────
+  let _installPrompt = null;
+
+  // Android/Chrome — ловим событие до того как браузер его скроет
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    _installPrompt = e;
+    const btn = document.getElementById('btnInstall');
+    if (btn) btn.style.display = 'block';
+  });
+
+  function installApp() {
+    if (_installPrompt) {
+      _installPrompt.prompt();
+      _installPrompt.userChoice.then(() => {
+        _installPrompt = null;
+        const btn = document.getElementById('btnInstall');
+        if (btn) btn.style.display = 'none';
+      });
+    }
+  }
+
+  // iOS Safari — показываем подсказку
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isInStandalone = window.navigator.standalone === true;
+  if (isIOS && !isInStandalone) {
+    document.addEventListener('DOMContentLoaded', () => {
+      const hint = document.getElementById('iosInstallHint');
+      if (hint) hint.style.display = 'block';
+    });
+  }
+</script>
+<script src="lib/leaflet.js"></script>
+<script src="content.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

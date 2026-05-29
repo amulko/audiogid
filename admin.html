@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ВелоПРОбег · Админ</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f0f5fb;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 24px;
+      padding: 32px 28px;
+      text-align: center;
+      box-shadow: 0 4px 24px rgba(40,118,200,.12);
+      max-width: 360px;
+      width: 100%;
+    }
+    .brand { font-size: 22px; font-weight: 900; color: #2876C8; margin-bottom: 4px; }
+    .brand span { color: #5CB63A; }
+    .subtitle { font-size: 13px; color: #8a9ab5; font-weight: 600; margin-bottom: 24px; }
+    .date-box {
+      background: #f0f5fb;
+      border-radius: 12px;
+      padding: 10px 16px;
+      font-size: 15px;
+      font-weight: 700;
+      color: #2876C8;
+      margin-bottom: 20px;
+    }
+    #qrBox {
+      display: inline-block;
+      border-radius: 16px;
+      border: 1px solid #e2ecf8;
+      margin-bottom: 16px;
+      overflow: hidden;
+      line-height: 0;
+    }
+    #qrBox img, #qrBox canvas {
+      display: block;
+    }
+    .token-box {
+      background: #f0f5fb;
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-size: 13px;
+      color: #6a7f99;
+      font-weight: 600;
+      margin-bottom: 20px;
+      word-break: break-all;
+    }
+    .token-box span { color: #2876C8; font-weight: 800; }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #2876C8, #4a9de0);
+      color: #fff;
+      border: none;
+      border-radius: 50px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-bottom: 10px;
+      font-family: inherit;
+    }
+    .btn-secondary {
+      background: #f0f5fb;
+      color: #2876C8;
+    }
+    .expires {
+      font-size: 11px;
+      color: #b0bdd0;
+      font-weight: 600;
+      margin-top: 12px;
+    }
+    .lock { font-size: 48px; margin-bottom: 12px; }
+    #loginBox { display: block; }
+    #mainBox  { display: none; }
+    input[type=password] {
+      width: 100%;
+      padding: 13px 16px;
+      border: 2px solid #e2ecf8;
+      border-radius: 14px;
+      font-size: 16px;
+      font-family: inherit;
+      margin-bottom: 12px;
+      outline: none;
+      text-align: center;
+      letter-spacing: 4px;
+    }
+    input[type=password]:focus { border-color: #2876C8; }
+    .error { color: #e53935; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div class="brand">Вело<span>ПРО</span>бег</div>
+  <div class="subtitle">Панель администратора</div>
+
+  <!-- Форма входа -->
+  <div id="loginBox">
+    <div class="lock">🔐</div>
+    <input type="password" id="pinInput" placeholder="Введите PIN" maxlength="6"
+           onkeydown="if(event.key==='Enter') checkPin()">
+    <div class="error" id="pinError"></div>
+    <button class="btn" onclick="checkPin()">Войти</button>
+  </div>
+
+  <!-- Главный экран с QR -->
+  <div id="mainBox">
+    <div class="date-box" id="dateBox"></div>
+    <div id="qrBox"></div>
+    <div class="token-box">Токен: <span id="tokenText"></span></div>
+    <button class="btn" onclick="downloadQR()">📥 Сохранить QR</button>
+    <button class="btn btn-secondary" onclick="copyLink()">🔗 Скопировать ссылку</button>
+    <div class="expires" id="expiresText"></div>
+  </div>
+</div>
+
+<script src="./lib/qrcode.min.js"></script>
+
+<script>
+  const SECRET   = 'vbp8kzm2025xQ';
+  const BASE_URL = 'https://veloprokat-audiogid.pages.dev';
+  const ADMIN_PIN = '6860';
+
+  // ── Проверка PIN ──────────────────────────────────────────────────────────
+  function checkPin() {
+    const val = document.getElementById('pinInput').value;
+    if (val === ADMIN_PIN) {
+      document.getElementById('loginBox').style.display = 'none';
+      document.getElementById('mainBox').style.display  = 'block';
+      initQR();
+    } else {
+      document.getElementById('pinError').textContent = 'Неверный PIN';
+      document.getElementById('pinInput').value = '';
+    }
+  }
+
+  // ── Генерация токена (HMAC-SHA256) ────────────────────────────────────────
+  async function getToken(dateStr) {
+    const enc = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw', enc.encode(SECRET),
+      { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+    );
+    const buf = await crypto.subtle.sign('HMAC', key, enc.encode(dateStr));
+    return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2,'0')).join('').slice(0,10);
+  }
+
+  // ── Инициализация QR ──────────────────────────────────────────────────────
+  async function initQR() {
+    const msk     = new Date(Date.now() + 3 * 3600e3);
+    const dateStr = msk.toISOString().slice(0, 10);
+    const token   = await getToken(dateStr);
+    const url     = `${BASE_URL}/?k=${token}`;
+
+    // Дата
+    const days = ['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
+    const d = new Date(msk);
+    document.getElementById('dateBox').textContent =
+      `📅 ${d.getUTCDate()} ${['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'][d.getUTCMonth()]} — ${days[d.getUTCDay()]}`;
+
+    document.getElementById('tokenText').textContent = token;
+
+    // Время истечения
+    const midnight = new Date(dateStr + 'T21:00:00Z');
+    const hoursLeft = Math.round((midnight - Date.now()) / 3600000);
+    document.getElementById('expiresText').textContent =
+      `Действует до полуночи по Москве · осталось ~${hoursLeft} ч`;
+
+    // QR
+    const box = document.getElementById('qrBox');
+    box.innerHTML = '';
+    new QRCode(box, {
+      text: url,
+      width: 240,
+      height: 240,
+      colorDark: '#2876C8',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+
+    // Сохраняем URL для кнопок
+    box.dataset.url = url;
+  }
+
+  // ── Скачать QR ────────────────────────────────────────────────────────────
+  function downloadQR() {
+    const box  = document.getElementById('qrBox');
+    const msk  = new Date(Date.now() + 3 * 3600e3);
+    const date = msk.toISOString().slice(0, 10);
+    const img  = box.querySelector('img') || box.querySelector('canvas');
+    const a    = document.createElement('a');
+    a.download = `velogid_qr_${date}.png`;
+    a.href     = img.tagName === 'CANVAS' ? img.toDataURL() : img.src;
+    a.click();
+  }
+
+  // ── Скопировать ссылку ────────────────────────────────────────────────────
+  function copyLink() {
+    const url = document.getElementById('qrBox').dataset.url;
+    navigator.clipboard.writeText(url).then(() => {
+      const btn = event.target;
+      btn.textContent = '✓ Скопировано!';
+      setTimeout(() => btn.textContent = '🔗 Скопировать ссылку', 2000);
+    });
+  }
+</script>
+
+</body>
+</html>
