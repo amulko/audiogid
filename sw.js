@@ -1,5 +1,5 @@
 // Service Worker — ВелоГид v2 (офлайн-поддержка)
-const APP_CACHE  = 'velogid-app-v34';
+const APP_CACHE  = 'velogid-app-v35';
 const TILE_CACHE = 'velogid-tiles-v1';
 
 const APP_ASSETS = [

@@ -2,7 +2,7 @@
   "name": "ВелоПРОбег · АудиоГид",
   "short_name": "АудиоГид",
   "description": "Аудиогид по историческому маршруту вдоль Балтийского побережья",
-  "start_url": "/",
+  "start_url": "/audiogid/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#2876C8",

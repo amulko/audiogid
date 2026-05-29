@@ -27,7 +27,7 @@ from qrcode.image.styles.moduledrawers import RoundedModuleDrawer
 
 # URL вашего приложения (должен быть стабильным, а не временным Cloudflare-тоннелем)
 # Пример: https://veloprokat-guide.pages.dev  или  https://ваш-домен.ru
-BASE_URL = 'https://veloprokat-audiogid.pages.dev'
+BASE_URL = 'https://amulko.github.io/audiogid'
 
 # Секретный ключ — должен совпадать с SECRET в index.html
 SECRET = 'vbp8kzm2025xQ'
