@@ -13,6 +13,7 @@ const COOLDOWN_MS = 90000;
 let audioEnabled = false;
 let audioQueue = [];
 let currentAudio = null; // HTML5 Audio вместо SpeechSynthesis
+let wakeLock = null;
 
 // ── MAP ──────────────────────────────────────────────────────────────────────
 
@@ -91,7 +92,7 @@ function startGPS() {
   watchId = navigator.geolocation.watchPosition(
     onPosition,
     onPositionError,
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
   );
 }
 
@@ -330,9 +331,26 @@ function onListClick(id) {
 
 // ── START ────────────────────────────────────────────────────────────────────
 
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => {
+        if (audioEnabled) requestWakeLock();
+      });
+    }
+  } catch (_) {}
+}
+
+// Перезапрашиваем wake lock когда вкладка снова становится видимой
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && audioEnabled) requestWakeLock();
+});
+
 function startTour() {
   document.getElementById('startOverlay').classList.add('hidden');
   audioEnabled = true;
+  requestWakeLock();
   startGPS();
 
   setCurrentWp(1);
