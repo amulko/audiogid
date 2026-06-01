@@ -6,6 +6,7 @@ const WAYPOINTS_PEDESTRIAN_ZGK = [
   // ── 1. СТАРТ: ЖЕЛЕЗНОДОРОЖНЫЙ ВОКЗАЛ ─────────────────────────────────────
   {
     id: 1,
+    audioFile: "audio/pedestrian_zgk_wp1.mp3",
     name: "Железнодорожный вокзал Кранца",
     shortDesc: "Старт маршрута · 1885 год",
     icon: "🚉",
@@ -22,6 +23,7 @@ const WAYPOINTS_PEDESTRIAN_ZGK = [
   // ── 2. ВОДОНАПОРНАЯ БАШНЯ ─────────────────────────────────────────────────
   {
     id: 2,
+    audioFile: "audio/pedestrian_zgk_wp2.mp3",
     name: "Водонапорная башня",
     shortDesc: "1927 год · Памятник без воды",
     icon: "🗼",
@@ -38,6 +40,7 @@ const WAYPOINTS_PEDESTRIAN_ZGK = [
   // ── 3. УЛИЦА КУРОРТНАЯ · НЕМЕЦКИЕ ВИЛЛЫ ──────────────────────────────────
   {
     id: 3,
+    audioFile: "audio/pedestrian_zgk_wp3.mp3",
     name: "Улица Курортная · Виллы Кранца",
     shortDesc: "Архитектура курортного города · 1880–1930-е",
     icon: "🏘️",
@@ -56,6 +59,7 @@ const WAYPOINTS_PEDESTRIAN_ZGK = [
   // ── 4. КОШАЧИЙ ПЕРЕХОД ────────────────────────────────────────────────────
   {
     id: 4,
+    audioFile: "audio/pedestrian_zgk_wp4.mp3",
     name: "Кошачий переход",
     shortDesc: "Самый известный пешеходный переход России",
     icon: "🐾",
@@ -74,6 +78,7 @@ const WAYPOINTS_PEDESTRIAN_ZGK = [
   // ── 5. МУРАРИУМ — КОШАЧИЙ МУЗЕЙ ──────────────────────────────────────────
   {
     id: 5,
+    audioFile: "audio/pedestrian_zgk_wp5.mp3",
     name: "Мурариум",
     shortDesc: "Единственный кошачий музей в России",
     icon: "🐱",
@@ -92,6 +97,7 @@ const WAYPOINTS_PEDESTRIAN_ZGK = [
   // ── 6. ПЛОЩАДЬ И РАТУША ──────────────────────────────────────────────────
   {
     id: 6,
+    audioFile: "audio/pedestrian_zgk_wp6.mp3",
     name: "Центральная площадь",
     shortDesc: "Сердце старого Кранца",
     icon: "🏛️",
@@ -108,6 +114,7 @@ const WAYPOINTS_PEDESTRIAN_ZGK = [
   // ── 7. МАЯК КРАНЦА ────────────────────────────────────────────────────────
   {
     id: 7,
+    audioFile: "audio/pedestrian_zgk_wp7.mp3",
     name: "Маяк Кранца",
     shortDesc: "1845 год · 19 метров · первый огонь на берегу",
     icon: "🔦",
@@ -126,6 +133,7 @@ const WAYPOINTS_PEDESTRIAN_ZGK = [
   // ── 8. НАБЕРЕЖНАЯ И ПЛЯЖ ─────────────────────────────────────────────────
   {
     id: 8,
+    audioFile: "audio/pedestrian_zgk_wp8.mp3",
     name: "Набережная",
     shortDesc: "Главная прогулочная зона · Балтийский берег",
     icon: "🌊",
@@ -144,6 +152,7 @@ const WAYPOINTS_PEDESTRIAN_ZGK = [
   // ── 9. ФИНИШ · ЯНТАРНЫЙ ПЛЯЖ ──────────────────────────────────────────────
   {
     id: 9,
+    audioFile: "audio/pedestrian_zgk_wp9.mp3",
     name: "Финиш · Янтарный пляж",
     shortDesc: "Конец маршрута · советуем остаться",
     icon: "🏁",

@@ -6,6 +6,7 @@ const WAYPOINTS_PEDESTRIAN_SVT = [
   // ── 1. СТАРТ: ЦЕНТР · ЯНТАРЬ ХОЛЛ ────────────────────────────────────────
   {
     id: 1,
+    audioFile: "audio/pedestrian_svt_wp1.mp3",
     name: "Старт: центр Светлогорска",
     shortDesc: "Раушен — «шум трёх вещей одновременно»",
     icon: "🏙️",
@@ -26,6 +27,7 @@ const WAYPOINTS_PEDESTRIAN_SVT = [
   // ── 2. ВОДОНАПОРНАЯ БАШНЯ ─────────────────────────────────────────────────
   {
     id: 2,
+    audioFile: "audio/pedestrian_svt_wp2.mp3",
     name: "Водонапорная башня",
     shortDesc: "1908 год · архитектор Куккук · смотровая площадка",
     icon: "🗼",
@@ -44,6 +46,7 @@ const WAYPOINTS_PEDESTRIAN_SVT = [
   // ── 3. ВИЛЛЫ РАУШЕНА · ИЗВЕСТНЫЕ ГОСТИ ───────────────────────────────────
   {
     id: 3,
+    audioFile: "audio/pedestrian_svt_wp3.mp3",
     name: "Виллы Раушена",
     shortDesc: "Томас Манн · Кете Кольвиц · курортная архитектура",
     icon: "🏡",
@@ -66,6 +69,7 @@ const WAYPOINTS_PEDESTRIAN_SVT = [
   // ── 4. РЕЧКА РАУШБАХ · СКРЫТАЯ ИСТОРИЯ ───────────────────────────────────
   {
     id: 4,
+    audioFile: "audio/pedestrian_svt_wp4.mp3",
     name: "Речка Раушбах",
     shortDesc: "Дала имя городу · теперь течёт под землёй",
     icon: "💧",
@@ -84,6 +88,7 @@ const WAYPOINTS_PEDESTRIAN_SVT = [
   // ── 5. ЕВАНГЕЛИЧЕСКАЯ КИРХА ───────────────────────────────────────────────
   {
     id: 5,
+    audioFile: "audio/pedestrian_svt_wp5.mp3",
     name: "Евангелическая кирха",
     shortDesc: "1907 год · войну пережила · судьба прихода",
     icon: "⛪",
@@ -100,6 +105,7 @@ const WAYPOINTS_PEDESTRIAN_SVT = [
   // ── 6. СОЛНЕЧНЫЕ ЧАСЫ И ПАРК БРАХЕРТА ────────────────────────────────────
   {
     id: 6,
+    audioFile: "audio/pedestrian_svt_wp6.mp3",
     name: "Солнечные часы Брахерта",
     shortDesc: "Скульптор Герман Брахерт · 1928 год",
     icon: "☀️",
@@ -118,6 +124,7 @@ const WAYPOINTS_PEDESTRIAN_SVT = [
   // ── 7. ФУНИКУЛЁР ─────────────────────────────────────────────────────────
   {
     id: 7,
+    audioFile: "audio/pedestrian_svt_wp7.mp3",
     name: "Фуникулёр",
     shortDesc: "1912 год · 30 метров вниз · старейший в России",
     icon: "🚡",
@@ -136,6 +143,7 @@ const WAYPOINTS_PEDESTRIAN_SVT = [
   // ── 8. ПЛЯЖ И НАБЕРЕЖНАЯ РАУШЕНА ─────────────────────────────────────────
   {
     id: 8,
+    audioFile: "audio/pedestrian_svt_wp8.mp3",
     name: "Пляж Светлогорска",
     shortDesc: "Балтийский берег · янтарь · история купаний",
     icon: "🌊",
@@ -154,6 +162,7 @@ const WAYPOINTS_PEDESTRIAN_SVT = [
   // ── 9. ФИНИШ: ПИРС И ВИД НА ГОРИЗОНТ ────────────────────────────────────
   {
     id: 9,
+    audioFile: "audio/pedestrian_svt_wp9.mp3",
     name: "Финиш: пирс Светлогорска",
     shortDesc: "Конец маршрута · 760 лет истории позади",
     icon: "🏁",
