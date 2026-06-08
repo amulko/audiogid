@@ -12,8 +12,30 @@ let lastTriggerTime = 0;
 const COOLDOWN_MS = 90000;
 let audioEnabled = false;
 let audioQueue = [];
-let currentAudio = null; // HTML5 Audio вместо SpeechSynthesis
+let currentAudio = null;
 let wakeLock = null;
+let audioCtx = null;
+
+function initAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+
+function playBeep() {
+  try {
+    if (!audioCtx) return;
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc  = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+    osc.frequency.setValueAtTime(1100, audioCtx.currentTime + 0.12);
+    gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+    osc.start(audioCtx.currentTime);
+    osc.stop(audioCtx.currentTime + 0.4);
+  } catch(_) {}
+}
 
 // ── MAP ──────────────────────────────────────────────────────────────────────
 
@@ -208,6 +230,7 @@ function showPlayBanner(wp) {
   _pendingWp = wp;
   const b = document.getElementById('playBanner');
   if (b) { b.style.display = 'flex'; b.querySelector('span').textContent = wp.name; }
+  playBeep();
 }
 function hideBanner() {
   _pendingWp = null;
@@ -367,6 +390,7 @@ function startTour() {
   document.getElementById('startOverlay').classList.add('hidden');
   audioEnabled = true;
   requestWakeLock();
+  initAudioCtx();
   startGPS();
 
   setCurrentWp(1);
