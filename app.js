@@ -198,9 +198,25 @@ function playAudio(wp) {
   currentAudio.addEventListener('ended', onAudioFinished);
   currentAudio.addEventListener('error', onAudioFinished);
 
-  currentAudio.play().catch(() => showToast('Не удалось воспроизвести аудио'));
+  currentAudio.play().catch(() => showPlayBanner(wp));
   visitedWaypoints.add(wp.id);
   updateProgress();
+}
+
+let _pendingWp = null;
+function showPlayBanner(wp) {
+  _pendingWp = wp;
+  const b = document.getElementById('playBanner');
+  if (b) { b.style.display = 'flex'; b.querySelector('span').textContent = wp.name; }
+}
+function hideBanner() {
+  _pendingWp = null;
+  const b = document.getElementById('playBanner');
+  if (b) b.style.display = 'none';
+}
+function resumeFromBanner() {
+  hideBanner();
+  if (_pendingWp) playAudio(_pendingWp);
 }
 
 function onAudioFinished() {

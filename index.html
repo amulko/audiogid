@@ -631,6 +631,27 @@ async function handleScannedQR(data) {
 <!-- ─── Toast ─────────────────────────────────────────────────────────────── -->
 <div class="toast" id="toast"></div>
 
+<!-- ─── Баннер разблокировки аудио ──────────────────────────────────────── -->
+<div id="playBanner" onclick="resumeFromBanner()" style="
+  display:none; position:fixed; bottom:90px; left:12px; right:12px; z-index:9000;
+  background:linear-gradient(135deg,#1a5ca8,#2876C8);
+  color:#fff; border-radius:18px; padding:14px 18px;
+  align-items:center; gap:12px; cursor:pointer;
+  box-shadow:0 4px 20px rgba(40,118,200,.5);
+  animation: pulse 1.5s ease infinite;">
+  <div style="font-size:28px">🔊</div>
+  <div>
+    <div style="font-size:13px;opacity:.85;font-weight:600">Нажмите чтобы услышать рассказ</div>
+    <div style="font-size:15px;font-weight:800"><span></span></div>
+  </div>
+</div>
+<style>
+@keyframes pulse {
+  0%,100% { transform: scale(1); }
+  50%      { transform: scale(1.02); box-shadow: 0 6px 28px rgba(40,118,200,.7); }
+}
+</style>
+
 <script>
   // ── Кнопка установки PWA ──────────────────────────────────────────────────
   let _installPrompt = null;
