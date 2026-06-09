@@ -220,7 +220,11 @@ function playAudio(wp) {
   currentAudio.addEventListener('ended', onAudioFinished);
   currentAudio.addEventListener('error', onAudioFinished);
 
-  currentAudio.play().catch(() => showPlayBanner(wp));
+  currentAudio.play().catch(() => {
+    setTimeout(() => {
+      if (currentAudio && currentAudio.paused) showPlayBanner(wp);
+    }, 300);
+  });
   visitedWaypoints.add(wp.id);
   updateProgress();
 }
@@ -238,8 +242,9 @@ function hideBanner() {
   if (b) b.style.display = 'none';
 }
 function resumeFromBanner() {
+  const wp = _pendingWp;
   hideBanner();
-  if (_pendingWp) playAudio(_pendingWp);
+  if (wp) playAudio(wp);
 }
 
 function onAudioFinished() {
